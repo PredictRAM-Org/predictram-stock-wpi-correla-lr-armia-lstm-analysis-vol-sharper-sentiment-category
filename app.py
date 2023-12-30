@@ -50,7 +50,7 @@ def get_news_sentiment_scores(api_key, stock_name, num_articles=5):
     url = "https://newsapi.org/v2/everything"
     query_params = {
         "apiKey": api_key,
-        "q": f"{stock_name} AND (business OR finance) AND India",  # Search for Indian business stocks and finance-related news
+        "q": f"{stock_name} AND (business OR finance) AND India",
         "pageSize": num_articles
     }
 
@@ -81,7 +81,7 @@ WPI_data.set_index('Date', inplace=True)
 categorized_stocks_data = pd.read_excel("categorized_stocks.xlsx")
 
 # Streamlit UI
-st.image("png_2.3-removebg-preview.png", width=400)  # Replace "your_logo.png" with the path to your logo
+st.image("png_2.3-removebg-preview.png", width=400)
 st.title("Stock Price-WPI Correlation Analysis with Expected Inflation, Price Prediction, and News Sentiment Analysis")
 
 # User input for uploading Excel file with stocks name column
@@ -113,14 +113,14 @@ filtered_WPI_data = WPI_data.loc[start_date:end_date]
 expected_inflation = st.number_input("Enter Expected Upcoming WPI Inflation:", min_value=0.0, step=0.01)
 
 # News API key from newsapi.org
-news_api_key = "5843e8b1715a4c1fb6628befb47ca1e8"  # Replace with your actual API key
+news_api_key = "5843e8b1715a4c1fb6628befb47ca1e8"
 
 # Train models
 if st.button("Train Models"):
     st.write(f"Training models with data range: {data_range}, expected WPI inflation: {expected_inflation}...")
 
     correlations = []
-    actual_correlations = []  # New feature
+    actual_correlations = []
     future_prices_lr_list = []
     future_prices_arima_list = []
     latest_actual_prices = []
@@ -128,19 +128,21 @@ if st.button("Train Models"):
     stock_names = []
     volatilities = []
     sharpe_ratios = []
-    news_sentiment_scores = []  # New feature
+    news_sentiment_scores = []
+
+    categorized_stocks_list = []  # Initialize the list here
 
     for index, row in stocks_data.iterrows():
         stock_name = row['Stock']
 
-        # Fetch additional information from categorized stocks data
         additional_info = categorized_stocks_data[categorized_stocks_data['Symbol'] == stock_name]
 
         if not additional_info.empty:
             st.write(f"\nAdditional Information for {stock_name}:")
             st.table(additional_info)
 
-        # Fetch stock data and filter based on selected date range
+            categorized_stocks_list.append({'Stock': stock_name, 'Categorized Stocks Data': additional_info})
+
         stock_file_path = os.path.join("stock_folder", f"{stock_name}.xlsx")
         if os.path.exists(stock_file_path):
             selected_stock_data = pd.read_excel(stock_file_path)
@@ -148,38 +150,29 @@ if st.button("Train Models"):
             selected_stock_data.set_index('Date', inplace=True)
             filtered_stock_data = selected_stock_data.loc[start_date:end_date]
 
-            # Merge stock and WPI data on Date
             merged_data = pd.merge(filtered_stock_data, filtered_WPI_data, left_index=True, right_index=True, how='inner')
 
-            # Handle NaN values in WPI column
             if merged_data['WPI'].isnull().any():
                 st.write(f"Warning: NaN values found in 'WPI' column for {stock_name}. Dropping NaN values.")
                 merged_data = merged_data.dropna(subset=['WPI'])
 
-            # Calculate WPI change
             merged_data['WPI Change'] = merged_data['WPI'].pct_change()
-
-            # Drop NaN values after calculating percentage change
             merged_data = merged_data.dropna()
 
-            # Show correlation between 'Close' column and 'WPI Change'
             correlation_close_WPI = merged_data['Close'].corr(merged_data['WPI Change'])
             correlation_actual = merged_data['Close'].corr(merged_data['WPI'])
-            actual_correlations.append(correlation_actual)  # New feature
+            actual_correlations.append(correlation_actual)
 
             st.write(f"Correlation between 'Close' and 'WPI Change' for {stock_name}: {correlation_close_WPI}")
             st.write(f"Actual Correlation between 'Close' and 'WPI' for {stock_name}: {correlation_actual}")
 
-            # Train Linear Regression model
             model_lr = LinearRegression()
             X_lr = merged_data[['WPI']]
             y_lr = merged_data['Close']
             model_lr.fit(X_lr, y_lr)
 
-            # Train ARIMA model using auto_arima
             model_arima = auto_arima(y_lr, seasonal=False, suppress_warnings=True)
 
-            # Train LSTM model
             min_max_scaler = MinMaxScaler()
             scaled_data = min_max_scaler.fit_transform(y_lr.values.reshape(-1, 1))
             x_train, y_train = prepare_data_for_lstm(scaled_data, look_back=3)
@@ -187,11 +180,9 @@ if st.button("Train Models"):
             model_lstm = build_lstm_model(x_train.shape[1])
             model_lstm.fit(x_train, y_train, epochs=50, batch_size=32)
 
-            # Predict future prices based on Linear Regression
             future_prices_lr = model_lr.predict([[expected_inflation]])
             st.write(f"Predicted Price Change for Future Inflation (Linear Regression): {future_prices_lr[0]}")
 
-            # Predict future prices based on ARIMA
             arima_predictions = model_arima.predict(1)
             if isinstance(arima_predictions, pd.Series):
                 future_prices_arima = arima_predictions.iloc[0]
@@ -199,15 +190,12 @@ if st.button("Train Models"):
                 future_prices_arima = arima_predictions[0]
             st.write(f"Predicted Price Change for Future Inflation (ARIMA): {future_prices_arima}")
 
-            # Predict future prices using LSTM
-            last_observed_price = scaled_data[-3:]  # Use the last 3 observations for prediction
+            last_observed_price = scaled_data[-3:]
             future_price_lstm = predict_future_lstm(last_observed_price, model_lstm, min_max_scaler)
             st.write(f"Predicted Stock Price for Future Inflation (LSTM): {future_price_lstm}")
 
-            # Get news articles and sentiment scores
             news_articles = get_news_sentiment_scores(news_api_key, stock_name, num_articles=5)
 
-            # Display news articles and sentiment scores
             st.write(f"News Articles and Sentiment Scores for {stock_name}:")
 
             if news_articles:
@@ -225,17 +213,15 @@ if st.button("Train Models"):
             else:
                 st.warning(f"No news found for {stock_name}.")
 
-            # Display the latest actual price
             latest_actual_price = merged_data['Close'].iloc[-1]
             st.write(f"Latest Actual Price for {stock_name}: {latest_actual_price}")
 
-            # Calculate volatility and Sharpe ratio
             daily_returns = merged_data['Close'].pct_change().dropna()
             volatility = daily_returns.std()
-            annualized_volatility = volatility * np.sqrt(252)  # Assuming 252 trading days in a year
+            annualized_volatility = volatility * np.sqrt(252)
             average_daily_return = daily_returns.mean()
             annualized_return = average_daily_return * 252
-            risk_free_rate = 0.02  # You can adjust the risk-free rate as needed
+            risk_free_rate = 0.02
             sharpe_ratio = (annualized_return - risk_free_rate) / annualized_volatility
 
             st.write(f"Volatility for {stock_name}: {annualized_volatility}")
@@ -250,22 +236,26 @@ if st.button("Train Models"):
             volatilities.append(annualized_volatility)
             sharpe_ratios.append(sharpe_ratio)
 
-    # Create a DataFrame for results
-    results_data = {
+    # Create a DataFrame for categorized stocks data
+    categorized_stocks_df = pd.DataFrame(categorized_stocks_list)
+
+    # Display results in descending order of correlation
+    st.write("\nResults Sorted by Correlation:")
+    sorted_results_df = pd.DataFrame({
         'Stock': stock_names,
         'Correlation with WPI Change': correlations,
-        'Actual Correlation with WPI': actual_correlations,  # New feature
+        'Actual Correlation with WPI': actual_correlations,
         'Predicted Price Change (Linear Regression)': future_prices_lr_list,
         'Predicted Price Change (ARIMA)': future_prices_arima_list,
         'Latest Actual Price': latest_actual_prices,
         'Predicted Stock Price (LSTM)': future_price_lstm_list,
         'Volatility': volatilities,
         'Sharpe Ratio': sharpe_ratios,
-        'News Sentiment Scores': news_sentiment_scores  # New feature
-    }
-    results_df = pd.DataFrame(results_data)
+        'News Sentiment Scores': news_sentiment_scores
+    }).sort_values(by='Correlation with WPI Change', ascending=False)
 
-    # Display results in descending order of correlation
-    st.write("\nResults Sorted by Correlation:")
-    sorted_results_df = results_df.sort_values(by='Correlation with WPI Change', ascending=False)
     st.table(sorted_results_df)
+
+    # Display categorized stocks data at the end
+    st.write("\nCategorized Stocks Data:")
+    st.table(categorized_stocks_df)
