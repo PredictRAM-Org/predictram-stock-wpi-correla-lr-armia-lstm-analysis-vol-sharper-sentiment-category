@@ -289,8 +289,3 @@ if st.button("Train Models"):
     st.write("\nResults Sorted by Correlation:")
     sorted_results_df = results_df.sort_values(by='Correlation with WPI Change', ascending=False)
     st.table(sorted_results_df)
-
-    # Display results in descending order of correlation
-    st.write("\nResults Sorted by Correlation:")
-    sorted_results_df = results_df.sort_values(by='Correlation with WPI Change
-    st.table(sorted_results_df)
