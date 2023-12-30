@@ -28,6 +28,21 @@ def build_lstm_model(input_shape):
     model.compile(optimizer='adam', loss='mean_squared_error')
     return model
 
+# Function to prepare data for Linear Regression with EMA
+def prepare_data_for_lr(data):
+    data['WPI'] = data['WPI'].fillna(0)  # Handle NaN values in 'WPI' column
+    data['WPI Change'] = data['WPI'].pct_change().fillna(0)
+
+    # Calculate 50 Days EMA and 200 Days EMA
+    data['50 Days EMA'] = data['Close'].ewm(span=50, adjust=False).mean()
+    data['200 Days EMA'] = data['Close'].ewm(span=200, adjust=False).mean()
+
+    # Prepare X and y for Linear Regression
+    X = data[['WPI', '50 Days EMA', '200 Days EMA']]
+    y = data['Close']
+
+    return X, y
+
 # Function to predict future prices using LSTM
 def predict_future_lstm(last_observed_price, model, min_max_scaler, num_steps=1):
     predicted_prices = []
