@@ -267,23 +267,28 @@ if st.button("Train Models"):
             sharpe_ratios.append(sharpe_ratio)
 
             # Append results to the dictionary
-            results_data['Stock'].append(stock_name)
-            results_data['Correlation with WPI Change'].append(correlation_close_WPI)
-            results_data['Actual Correlation with WPI'].append(correlation_actual)
-            results_data['Predicted Price Change (Linear Regression)'].append(future_prices_lr[0])
-            results_data['Predicted Price Change (ARIMA)'].append(future_prices_arima)
-            results_data['Latest Actual Price'].append(latest_actual_price)
-            results_data['Predicted Stock Price (LSTM)'].append(future_price_lstm)
-            results_data['Volatility'].append(annualized_volatility)
-            results_data['Beta'].append(beta)
-            results_data['Return_on_Investment'].append(roi)
-            results_data['Debt_to_Equity_Ratio'].append(debt_to_equity_ratio)
-            results_data['Category'].append(category)
-            results_data['Sharpe Ratio'].append(sharpe_ratio)
-            results_data['News Sentiment Scores'].append(news_sentiment_scores)
+        results_data['Stock'].append(stock_name)
+        results_data['Correlation with WPI Change'].append(correlation_close_WPI)
+        results_data['Actual Correlation with WPI'].append(correlation_actual)
+        results_data['Predicted Price Change (Linear Regression)'].append(future_prices_lr[0])
+        results_data['Predicted Price Change (ARIMA)'].append(future_prices_arima)
+        results_data['Latest Actual Price'].append(latest_actual_price)
+        results_data['Predicted Stock Price (LSTM)'].append(future_price_lstm)
+        results_data['Volatility'].append(annualized_volatility)
+        results_data['Beta'].append(beta)
+        results_data['Return_on_Investment'].append(roi)
+        results_data['Debt_to_Equity_Ratio'].append(debt_to_equity_ratio)
+        results_data['Category'].append(category)
+        results_data['Sharpe Ratio'].append(sharpe_ratio)
+        results_data['News Sentiment Scores'].append(news_sentiment_scores)
 
     # Create a DataFrame for results
     results_df = pd.DataFrame(results_data)
+
+    # Display results in descending order of correlation
+    st.write("\nResults Sorted by Correlation:")
+    sorted_results_df = results_df.sort_values(by='Correlation with WPI Change', ascending=False)
+    st.table(sorted_results_df)
 
     # Display results in descending order of correlation
     st.write("\nResults Sorted by Correlation:")
