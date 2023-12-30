@@ -122,7 +122,7 @@ if st.button("Train Models"):
     results_data = {
         'Stock': [],
         'Correlation with WPI Change': [],
-        'Actual Correlation with WPI': [],
+        'Actual Correlation with WPI': [],  # New feature
         'Predicted Price Change (Linear Regression)': [],
         'Predicted Price Change (ARIMA)': [],
         'Latest Actual Price': [],
@@ -133,7 +133,7 @@ if st.button("Train Models"):
         'Debt_to_Equity_Ratio': [],
         'Category': [],
         'Sharpe Ratio': [],
-        'News Sentiment Scores': []
+        'News Sentiment Scores': []  # New feature
     }
 
     for index, row in stocks_data.iterrows():
@@ -155,7 +155,7 @@ if st.button("Train Models"):
             st.write(f"Return on Investment: {roi}")
             st.write(f"Debt to Equity Ratio: {debt_to_equity_ratio}")
             st.write(f"Category: {category}")
-
+            
         # Fetch stock data and filter based on selected date range
         stock_file_path = os.path.join("stock_folder", f"{stock_name}.xlsx")
         if os.path.exists(stock_file_path):
