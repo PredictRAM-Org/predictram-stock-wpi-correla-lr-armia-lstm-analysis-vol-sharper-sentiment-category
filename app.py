@@ -240,25 +240,22 @@ for index, row in stocks_data.iterrows():
     # Create a DataFrame for categorized stocks data after the loop
 categorized_stocks_df = pd.DataFrame(categorized_stocks_list)
 
-    # Display results in descending order of correlation
-    st.write("\nResults Sorted by Correlation:")
-    sorted_results_df = pd.DataFrame({
-        'Stock': stock_names,
-        'Correlation with WPI Change': correlations,
-        'Actual Correlation with WPI': actual_correlations,
-        'Predicted Price Change (Linear Regression)': future_prices_lr_list,
-        'Predicted Price Change (ARIMA)': future_prices_arima_list,
-        'Latest Actual Price': latest_actual_prices,
-        'Predicted Stock Price (LSTM)': future_price_lstm_list,
-        'Volatility': volatilities,
-        'Sharpe Ratio': sharpe_ratios,
-        'News Sentiment Scores': news_sentiment_scores
-    }).sort_values(by='Correlation with WPI Change', ascending=False)
+   # Display results in descending order of correlation
+st.write("\nResults Sorted by Correlation:")
+sorted_results_df = pd.DataFrame({
+    'Stock': stock_names,
+    'Correlation with WPI Change': correlations,
+    'Actual Correlation with WPI': actual_correlations,
+    'Predicted Price Change (Linear Regression)': future_prices_lr_list,
+    'Predicted Price Change (ARIMA)': future_prices_arima_list,
+    'Latest Actual Price': latest_actual_prices,
+    'Predicted Stock Price (LSTM)': future_price_lstm_list,
+    'Volatility': volatilities,
+    'Sharpe Ratio': sharpe_ratios,
+    'News Sentiment Scores': news_sentiment_scores
+}).sort_values(by='Correlation with WPI Change', ascending=False)
 
-    st.table(sorted_results_df)
-
-    # Define the columns you want to display in the Categorized Stocks Data table
-selected_columns = ['Stock', 'Beta', 'Return_on_Investment', 'Debt_to_Equity_Ratio', 'Category']
+st.table(sorted_results_df)
 
 # Display categorized stocks data at the end
 st.write("\nCategorized Stocks Data:")
