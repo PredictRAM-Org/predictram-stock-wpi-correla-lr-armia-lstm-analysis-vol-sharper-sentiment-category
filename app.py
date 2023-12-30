@@ -261,7 +261,6 @@ if st.button("Train Models"):
         'Predicted Stock Price (LSTM)': future_price_lstm_list,
         'Volatility': volatilities,
         'Sharpe Ratio': sharpe_ratios,
-        'Sharpe Ratio': sharpe_ratios,
         'News Sentiment Scores': news_sentiment_scores  # New feature
     }
     results_df = pd.DataFrame(results_data)
