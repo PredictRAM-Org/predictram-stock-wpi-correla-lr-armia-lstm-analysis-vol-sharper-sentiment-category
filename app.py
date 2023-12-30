@@ -9,7 +9,6 @@ from tensorflow.keras.layers import LSTM, Dense
 from sklearn.preprocessing import MinMaxScaler
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import requests
-from datetime import timedelta
 
 # Function to prepare data for LSTM
 def prepare_data_for_lstm(data, look_back=1):
@@ -27,21 +26,6 @@ def build_lstm_model(input_shape):
     model.add(Dense(units=1))
     model.compile(optimizer='adam', loss='mean_squared_error')
     return model
-
-# Function to prepare data for Linear Regression with EMA
-def prepare_data_for_lr(data):
-    data['WPI'] = data['WPI'].fillna(0)  # Handle NaN values in 'WPI' column
-    data['WPI Change'] = data['WPI'].pct_change().fillna(0)
-
-    # Calculate 50 Days EMA and 200 Days EMA
-    data['50 Days EMA'] = data['Close'].ewm(span=50, adjust=False).mean()
-    data['200 Days EMA'] = data['Close'].ewm(span=200, adjust=False).mean()
-
-    # Prepare X and y for Linear Regression
-    X = data[['WPI', '50 Days EMA', '200 Days EMA']]
-    y = data['Close']
-
-    return X, y
 
 # Function to predict future prices using LSTM
 def predict_future_lstm(last_observed_price, model, min_max_scaler, num_steps=1):
@@ -88,26 +72,13 @@ def get_news_sentiment_scores(api_key, stock_name, num_articles=5):
 
     return articles_list
 
-# Function to calculate Exponential Moving Averages (EMA)
-def calculate_ema(data, span):
-    return data.ewm(span=span, adjust=False).mean()
-
-# Function to prepare data for linear regression
-def prepare_data_for_lr(data):
-    X = data[['WPI', '50 Days EMA', '200 Days EMA']]
-    y = data['Close']
-    return X, y
-
-# Function to calculate 50 and 200 Days EMA for each stock
-def calculate_ema_for_stock(selected_stock_data):
-    fifty_days_ema = calculate_ema(selected_stock_data['Close'], span=50)
-    two_hundred_days_ema = calculate_ema(selected_stock_data['Close'], span=200)
-    return fifty_days_ema, two_hundred_days_ema
-
 # Load WPI data
 WPI_data = pd.read_excel("WPI.xlsx")
 WPI_data['Date'] = pd.to_datetime(WPI_data['Date'])
 WPI_data.set_index('Date', inplace=True)
+
+# Load categorized stocks data
+categorized_stocks_data = pd.read_excel("categorized_stocks.xlsx")
 
 # Streamlit UI
 st.image("png_2.3-removebg-preview.png", width=400)  # Replace "your_logo.png" with the path to your logo
@@ -141,9 +112,6 @@ filtered_WPI_data = WPI_data.loc[start_date:end_date]
 # User input for expected WPI inflation
 expected_inflation = st.number_input("Enter Expected Upcoming WPI Inflation:", min_value=0.0, step=0.01)
 
-# Load categorized_stocks data
-categorized_stocks = pd.read_excel("categorized_stocks.xlsx")
-
 # News API key from newsapi.org
 news_api_key = "5843e8b1715a4c1fb6628befb47ca1e8"  # Replace with your actual API key
 
@@ -164,6 +132,13 @@ if st.button("Train Models"):
 
     for index, row in stocks_data.iterrows():
         stock_name = row['Stock']
+
+        # Fetch additional information from categorized stocks data
+        additional_info = categorized_stocks_data[categorized_stocks_data['Symbol'] == stock_name]
+
+        if not additional_info.empty:
+            st.write(f"\nAdditional Information for {stock_name}:")
+            st.table(additional_info)
 
         # Fetch stock data and filter based on selected date range
         stock_file_path = os.path.join("stock_folder", f"{stock_name}.xlsx")
@@ -195,16 +170,10 @@ if st.button("Train Models"):
             st.write(f"Correlation between 'Close' and 'WPI Change' for {stock_name}: {correlation_close_WPI}")
             st.write(f"Actual Correlation between 'Close' and 'WPI' for {stock_name}: {correlation_actual}")
 
-            # Calculate 50 and 200 Days EMA
-            fifty_days_ema, two_hundred_days_ema = calculate_ema_for_stock(selected_stock_data)
-
-            # Update selected_stock_data with EMA columns
-            selected_stock_data['50 Days EMA'] = fifty_days_ema
-            selected_stock_data['200 Days EMA'] = two_hundred_days_ema
-
-            # Train Linear Regression model with EMA
-            X_lr, y_lr = prepare_data_for_lr(selected_stock_data)
+            # Train Linear Regression model
             model_lr = LinearRegression()
+            X_lr = merged_data[['WPI']]
+            y_lr = merged_data['Close']
             model_lr.fit(X_lr, y_lr)
 
             # Train ARIMA model using auto_arima
@@ -260,16 +229,6 @@ if st.button("Train Models"):
             latest_actual_price = merged_data['Close'].iloc[-1]
             st.write(f"Latest Actual Price for {stock_name}: {latest_actual_price}")
 
-            # Display Beta, Return_on_Investment, Debt_to_Equity_Ratio, Category for selected stocks
-            selected_stock_info = categorized_stocks.loc[categorized_stocks['Symbol'] == stock_name]
-            if not selected_stock_info.empty:
-                st.write(f"Beta for {stock_name}: {selected_stock_info['Beta'].values[0]}")
-                st.write(f"Return on Investment for {stock_name}: {selected_stock_info['Return_on_Investment'].values[0]}")
-                st.write(f"Debt to Equity Ratio for {stock_name}: {selected_stock_info['Debt_to_Equity_Ratio'].values[0]}")
-                st.write(f"Category for {stock_name}: {selected_stock_info['Category'].values[0]}")
-            else:
-                st.warning(f"No information found for {stock_name} in categorized_stocks.")
-
             # Calculate volatility and Sharpe ratio
             daily_returns = merged_data['Close'].pct_change().dropna()
             volatility = daily_returns.std()
@@ -281,11 +240,6 @@ if st.button("Train Models"):
 
             st.write(f"Volatility for {stock_name}: {annualized_volatility}")
             st.write(f"Sharpe Ratio for {stock_name}: {sharpe_ratio}")
-
-            # Calculate 50 and 200 Days EMA for the stock
-            fifty_days_ema, two_hundred_days_ema = calculate_ema_for_stock(selected_stock_data)
-            fifty_days_ema_list.append(fifty_days_ema.iloc[-1])
-            two_hundred_days_ema_list.append(two_hundred_days_ema.iloc[-1])
 
             correlations.append(correlation_close_WPI)
             future_prices_lr_list.append(future_prices_lr[0])
@@ -305,15 +259,13 @@ if st.button("Train Models"):
         'Predicted Price Change (ARIMA)': future_prices_arima_list,
         'Latest Actual Price': latest_actual_prices,
         'Predicted Stock Price (LSTM)': future_price_lstm_list,
-        '50 Days EMA': fifty_days_ema_list,  # New feature
-        '200 Days EMA': two_hundred_days_ema_list,  # New feature
         'Volatility': volatilities,
         'Sharpe Ratio': sharpe_ratios,
         'News Sentiment Scores': news_sentiment_scores  # New feature
     }
+    results_df = pd.DataFrame(results_data)
 
     # Display results in descending order of correlation
     st.write("\nResults Sorted by Correlation:")
-    results_df = pd.DataFrame(results_data)
     sorted_results_df = results_df.sort_values(by='Correlation with WPI Change', ascending=False)
     st.table(sorted_results_df)
