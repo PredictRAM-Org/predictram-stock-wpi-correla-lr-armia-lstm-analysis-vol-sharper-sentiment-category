@@ -130,6 +130,8 @@ if st.button("Train Models"):
     sharpe_ratios = []
     news_sentiment_scores = []
 
+    categorized_stocks_list = []  # Initialize the list here
+
     for index, row in stocks_data.iterrows():
         stock_name = row['Stock']
 
@@ -234,28 +236,26 @@ if st.button("Train Models"):
             volatilities.append(annualized_volatility)
             sharpe_ratios.append(sharpe_ratio)
 
-    # Create a DataFrame for results
-    results_data = {
+    # Create a DataFrame for categorized stocks data
+    categorized_stocks_df = pd.DataFrame(categorized_stocks_list)
+
+    # Display results in descending order of correlation
+    st.write("\nResults Sorted by Correlation:")
+    sorted_results_df = pd.DataFrame({
         'Stock': stock_names,
         'Correlation with WPI Change': correlations,
-        'Actual Correlation with WPI': actual_correlations,  # New feature
+        'Actual Correlation with WPI': actual_correlations,
         'Predicted Price Change (Linear Regression)': future_prices_lr_list,
         'Predicted Price Change (ARIMA)': future_prices_arima_list,
         'Latest Actual Price': latest_actual_prices,
         'Predicted Stock Price (LSTM)': future_price_lstm_list,
         'Volatility': volatilities,
         'Sharpe Ratio': sharpe_ratios,
-        'News Sentiment Scores': news_sentiment_scores  # New feature
-    }
-    results_df = pd.DataFrame(results_data)
+        'News Sentiment Scores': news_sentiment_scores
+    }).sort_values(by='Correlation with WPI Change', ascending=False)
 
-    # Display results in descending order of correlation
-    st.write("\nResults Sorted by Correlation:")
-    sorted_results_df = results_df.sort_values(by='Correlation with WPI Change', ascending=False)
     st.table(sorted_results_df)
-    # Create a DataFrame for categorized stocks data
-categorized_stocks_df = pd.DataFrame(categorized_stocks_list)
 
-# Display categorized stocks data at the end
-st.write("\nCategorized Stocks Data:")
-st.table(categorized_stocks_df)
+    # Display categorized stocks data at the end
+    st.write("\nCategorized Stocks Data:")
+    st.table(categorized_stocks_df)
