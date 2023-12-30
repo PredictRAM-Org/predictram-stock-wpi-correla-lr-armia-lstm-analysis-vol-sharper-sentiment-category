@@ -130,18 +130,19 @@ if st.button("Train Models"):
     sharpe_ratios = []
     news_sentiment_scores = []
 
-    categorized_stocks_list = []  # Initialize the list here
+# Initialize an empty list for categorized stocks data
+categorized_stocks_list = []
 
-    for index, row in stocks_data.iterrows():
-        stock_name = row['Stock']
+for index, row in stocks_data.iterrows():
+    stock_name = row['Stock']
+    
+    # ... (rest of the loop remains unchanged)
 
-        additional_info = categorized_stocks_data[categorized_stocks_data['Symbol'] == stock_name]
+    if not additional_info.empty:
+        st.write(f"\nAdditional Information for {stock_name}:")
+        st.table(additional_info)
 
-        if not additional_info.empty:
-            st.write(f"\nAdditional Information for {stock_name}:")
-            st.table(additional_info)
-
-            categorized_stocks_list.append({'Stock': stock_name, 'Categorized Stocks Data': additional_info})
+        categorized_stocks_list.append({'Stock': stock_name, 'Categorized Stocks Data': additional_info})
 
         stock_file_path = os.path.join("stock_folder", f"{stock_name}.xlsx")
         if os.path.exists(stock_file_path):
@@ -236,8 +237,8 @@ if st.button("Train Models"):
             volatilities.append(annualized_volatility)
             sharpe_ratios.append(sharpe_ratio)
 
-    # Create a DataFrame for categorized stocks data
-    categorized_stocks_df = pd.DataFrame(categorized_stocks_list)
+    # Create a DataFrame for categorized stocks data after the loop
+categorized_stocks_df = pd.DataFrame(categorized_stocks_list)
 
     # Display results in descending order of correlation
     st.write("\nResults Sorted by Correlation:")
@@ -261,6 +262,10 @@ selected_columns = ['Stock', 'Beta', 'Return_on_Investment', 'Debt_to_Equity_Rat
 
 # Display categorized stocks data at the end
 st.write("\nCategorized Stocks Data:")
-categorized_stocks_df_selected = categorized_stocks_df[selected_columns]
-categorized_stocks_df_str = categorized_stocks_df_selected.astype(str)
-st.table(categorized_stocks_df_str)
+selected_columns = ['Stock', 'Beta', 'Return_on_Investment', 'Debt_to_Equity_Ratio', 'Category']
+if not categorized_stocks_df.empty:
+    categorized_stocks_df_selected = categorized_stocks_df[selected_columns]
+    categorized_stocks_df_str = categorized_stocks_df_selected.astype(str)
+    st.table(categorized_stocks_df_str)
+else:
+    st.warning("No categorized stocks data available.")
