@@ -130,19 +130,18 @@ if st.button("Train Models"):
     sharpe_ratios = []
     news_sentiment_scores = []
 
-# Initialize an empty list for categorized stocks data
-categorized_stocks_list = []
+    categorized_stocks_list = []  # Initialize the list here
 
-for index, row in stocks_data.iterrows():
-    stock_name = row['Stock']
-    
-    # ... (rest of the loop remains unchanged)
+    for index, row in stocks_data.iterrows():
+        stock_name = row['Stock']
 
-    if not additional_info.empty:
-        st.write(f"\nAdditional Information for {stock_name}:")
-        st.table(additional_info)
+        additional_info = categorized_stocks_data[categorized_stocks_data['Symbol'] == stock_name]
 
-        categorized_stocks_list.append({'Stock': stock_name, 'Categorized Stocks Data': additional_info})
+        if not additional_info.empty:
+            st.write(f"\nAdditional Information for {stock_name}:")
+            st.table(additional_info)
+
+            categorized_stocks_list.append({'Stock': stock_name, 'Categorized Stocks Data': additional_info})
 
         stock_file_path = os.path.join("stock_folder", f"{stock_name}.xlsx")
         if os.path.exists(stock_file_path):
@@ -237,32 +236,28 @@ for index, row in stocks_data.iterrows():
             volatilities.append(annualized_volatility)
             sharpe_ratios.append(sharpe_ratio)
 
-    # Create a DataFrame for categorized stocks data after the loop
-categorized_stocks_df = pd.DataFrame(categorized_stocks_list)
+    # Create a DataFrame for categorized stocks data
+    categorized_stocks_df = pd.DataFrame(categorized_stocks_list)
 
-   # Display results in descending order of correlation
-st.write("\nResults Sorted by Correlation:")
-sorted_results_df = pd.DataFrame({
-    'Stock': stock_names,
-    'Correlation with WPI Change': correlations,
-    'Actual Correlation with WPI': actual_correlations,
-    'Predicted Price Change (Linear Regression)': future_prices_lr_list,
-    'Predicted Price Change (ARIMA)': future_prices_arima_list,
-    'Latest Actual Price': latest_actual_prices,
-    'Predicted Stock Price (LSTM)': future_price_lstm_list,
-    'Volatility': volatilities,
-    'Sharpe Ratio': sharpe_ratios,
-    'News Sentiment Scores': news_sentiment_scores
-}).sort_values(by='Correlation with WPI Change', ascending=False)
+    # Display results in descending order of correlation
+    st.write("\nResults Sorted by Correlation:")
+    sorted_results_df = pd.DataFrame({
+        'Stock': stock_names,
+        'Correlation with WPI Change': correlations,
+        'Actual Correlation with WPI': actual_correlations,
+        'Predicted Price Change (Linear Regression)': future_prices_lr_list,
+        'Predicted Price Change (ARIMA)': future_prices_arima_list,
+        'Latest Actual Price': latest_actual_prices,
+        'Predicted Stock Price (LSTM)': future_price_lstm_list,
+        'Volatility': volatilities,
+        'Sharpe Ratio': sharpe_ratios,
+        'News Sentiment Scores': news_sentiment_scores
+    }).sort_values(by='Correlation with WPI Change', ascending=False)
 
-st.table(sorted_results_df)
+    st.table(sorted_results_df)
 
-# Display categorized stocks data at the end
-st.write("\nCategorized Stocks Data:")
-selected_columns = ['Stock', 'Beta', 'Return_on_Investment', 'Debt_to_Equity_Ratio', 'Category']
-if not categorized_stocks_df.empty:
+    # Display categorized stocks data at the end
+    st.write("\nCategorized Stocks Data:")
     categorized_stocks_df_selected = categorized_stocks_df[selected_columns]
     categorized_stocks_df_str = categorized_stocks_df_selected.astype(str)
     st.table(categorized_stocks_df_str)
-else:
-    st.warning("No categorized stocks data available.")
