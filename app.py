@@ -1,3 +1,4 @@
+# Import necessary libraries
 import os
 import pandas as pd
 import streamlit as st
@@ -9,6 +10,7 @@ from tensorflow.keras.layers import LSTM, Dense
 from sklearn.preprocessing import MinMaxScaler
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import requests
+from datetime import timedelta
 
 # Function to prepare data for LSTM
 def prepare_data_for_lstm(data, look_back=1):
@@ -78,38 +80,15 @@ def calculate_ema(data, span):
 
 # Function to prepare data for linear regression
 def prepare_data_for_lr(data):
-    X = data[['WPI']]
+    X = data[['WPI', '50 Days EMA', '200 Days EMA']]
     y = data['Close']
     return X, y
 
-# Function to prepare data for LSTM
-def prepare_data_for_lstm(data, look_back=1):
-    x, y = [], []
-    for i in range(len(data) - look_back):
-        x.append(data[i:(i + look_back), 0])
-        y.append(data[i + look_back, 0])
-    return np.array(x), np.array(y)
-
-# Function to build LSTM model
-def build_lstm_model(input_shape):
-    model = Sequential()
-    model.add(LSTM(units=50, return_sequences=True, input_shape=(input_shape, 1)))
-    model.add(LSTM(units=50))
-    model.add(Dense(units=1))
-    model.compile(optimizer='adam', loss='mean_squared_error')
-    return model
-
-# Function to predict future prices using LSTM
-def predict_future_lstm(last_observed_price, model, min_max_scaler, num_steps=1):
-    predicted_prices = []
-    input_data = last_observed_price.reshape(1, -1, 1)
-
-    for _ in range(num_steps):
-        predicted_price = model.predict(input_data)
-        predicted_prices.append(predicted_price[0, 0])
-        input_data = np.append(input_data[:, 1:, :], predicted_price.reshape(1, 1, 1), axis=1)
-
-    return min_max_scaler.inverse_transform(np.array(predicted_prices).reshape(1, -1))[0]
+# Function to calculate 50 and 200 Days EMA for each stock
+def calculate_ema_for_stock(selected_stock_data):
+    fifty_days_ema = calculate_ema(selected_stock_data['Close'], span=50)
+    two_hundred_days_ema = calculate_ema(selected_stock_data['Close'], span=200)
+    return fifty_days_ema, two_hundred_days_ema
 
 # Load WPI data
 WPI_data = pd.read_excel("WPI.xlsx")
@@ -151,6 +130,10 @@ expected_inflation = st.number_input("Enter Expected Upcoming WPI Inflation:", m
 # News API key from newsapi.org
 news_api_key = "5843e8b1715a4c1fb6628befb47ca1e8"  # Replace with your actual API key
 
+# Load categorized_stocks data
+categorized_stocks = pd.read_excel("categorized_stocks.xlsx")
+categorized_stocks.set_index('Symbol', inplace=True)
+
 # Train models
 if st.button("Train Models"):
     st.write(f"Training models with data range: {data_range}, expected WPI inflation: {expected_inflation}...")
@@ -165,6 +148,8 @@ if st.button("Train Models"):
     volatilities = []
     sharpe_ratios = []
     news_sentiment_scores = []  # New feature
+    fifty_days_ema_list = []  # New feature
+    two_hundred_days_ema_list = []  # New feature
 
     for index, row in stocks_data.iterrows():
         stock_name = row['Stock']
@@ -176,10 +161,6 @@ if st.button("Train Models"):
             selected_stock_data['Date'] = pd.to_datetime(selected_stock_data['Date'])
             selected_stock_data.set_index('Date', inplace=True)
             filtered_stock_data = selected_stock_data.loc[start_date:end_date]
-
-            # Calculate 50 days EMA and 200 days EMA
-            filtered_stock_data['50days_EMA'] = calculate_ema(filtered_stock_data['Close'], span=50)
-            filtered_stock_data['200days_EMA'] = calculate_ema(filtered_stock_data['Close'], span=200)
 
             # Merge stock and WPI data on Date
             merged_data = pd.merge(filtered_stock_data, filtered_WPI_data, left_index=True, right_index=True, how='inner')
@@ -205,7 +186,8 @@ if st.button("Train Models"):
 
             # Train Linear Regression model
             model_lr = LinearRegression()
-            X_lr, y_lr = prepare_data_for_lr(merged_data)
+            X_lr = merged_data[['WPI', '50 Days EMA', '200 Days EMA']]
+            y_lr = merged_data['Close']
             model_lr.fit(X_lr, y_lr)
 
             # Train ARIMA model using auto_arima
@@ -220,7 +202,7 @@ if st.button("Train Models"):
             model_lstm.fit(x_train, y_train, epochs=50, batch_size=32)
 
             # Predict future prices based on Linear Regression
-            future_prices_lr = model_lr.predict([[expected_inflation]])
+            future_prices_lr = model_lr.predict([[expected_inflation, fifty_days_ema.iloc[-1], two_hundred_days_ema.iloc[-1]]])
             st.write(f"Predicted Price Change for Future Inflation (Linear Regression): {future_prices_lr[0]}")
 
             # Predict future prices based on ARIMA
@@ -273,6 +255,11 @@ if st.button("Train Models"):
             st.write(f"Volatility for {stock_name}: {annualized_volatility}")
             st.write(f"Sharpe Ratio for {stock_name}: {sharpe_ratio}")
 
+            # Calculate 50 and 200 Days EMA for the stock
+            fifty_days_ema, two_hundred_days_ema = calculate_ema_for_stock(selected_stock_data)
+            fifty_days_ema_list.append(fifty_days_ema.iloc[-1])
+            two_hundred_days_ema_list.append(two_hundred_days_ema.iloc[-1])
+
             correlations.append(correlation_close_WPI)
             future_prices_lr_list.append(future_prices_lr[0])
             future_prices_arima_list.append(future_prices_arima)
@@ -282,7 +269,7 @@ if st.button("Train Models"):
             volatilities.append(annualized_volatility)
             sharpe_ratios.append(sharpe_ratio)
 
-        # Create a DataFrame for results
+    # Create a DataFrame for results
     results_data = {
         'Stock': stock_names,
         'Correlation with WPI Change': correlations,
@@ -298,18 +285,8 @@ if st.button("Train Models"):
         'News Sentiment Scores': news_sentiment_scores  # New feature
     }
 
-    # Read information from categorized_stocks.xlsx file
-    categorized_stocks = pd.read_excel("categorized_stocks.xlsx")
-    categorized_stocks.set_index('Symbol', inplace=True)
-    
-    # Merge results_df with categorized_stocks
-    results_df = pd.DataFrame(results_data)
-    results_df = pd.merge(results_df, categorized_stocks, left_on='Stock', right_index=True, how='left')
-
     # Display results in descending order of correlation
     st.write("\nResults Sorted by Correlation:")
+    results_df = pd.DataFrame(results_data)
     sorted_results_df = results_df.sort_values(by='Correlation with WPI Change', ascending=False)
     st.table(sorted_results_df)
-
-if __name__ == "__main__":
-    st.button("Train Models")
