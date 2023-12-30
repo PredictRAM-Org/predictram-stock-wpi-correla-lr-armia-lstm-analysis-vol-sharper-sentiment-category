@@ -1,4 +1,3 @@
-# Import necessary libraries
 import os
 import pandas as pd
 import streamlit as st
@@ -127,12 +126,11 @@ filtered_WPI_data = WPI_data.loc[start_date:end_date]
 # User input for expected WPI inflation
 expected_inflation = st.number_input("Enter Expected Upcoming WPI Inflation:", min_value=0.0, step=0.01)
 
-# News API key from newsapi.org
-news_api_key = "5843e8b1715a4c1fb6628befb47ca1e8"  # Replace with your actual API key
-
 # Load categorized_stocks data
 categorized_stocks = pd.read_excel("categorized_stocks.xlsx")
-categorized_stocks.set_index('Symbol', inplace=True)
+
+# News API key from newsapi.org
+news_api_key = "5843e8b1715a4c1fb6628befb47ca1e8"  # Replace with your actual API key
 
 # Train models
 if st.button("Train Models"):
@@ -148,8 +146,6 @@ if st.button("Train Models"):
     volatilities = []
     sharpe_ratios = []
     news_sentiment_scores = []  # New feature
-    fifty_days_ema_list = []  # New feature
-    two_hundred_days_ema_list = []  # New feature
 
     for index, row in stocks_data.iterrows():
         stock_name = row['Stock']
@@ -184,10 +180,16 @@ if st.button("Train Models"):
             st.write(f"Correlation between 'Close' and 'WPI Change' for {stock_name}: {correlation_close_WPI}")
             st.write(f"Actual Correlation between 'Close' and 'WPI' for {stock_name}: {correlation_actual}")
 
-            # Train Linear Regression model
+            # Calculate 50 and 200 Days EMA
+            fifty_days_ema, two_hundred_days_ema = calculate_ema_for_stock(selected_stock_data)
+
+            # Update selected_stock_data with EMA columns
+            selected_stock_data['50 Days EMA'] = fifty_days_ema
+            selected_stock_data['200 Days EMA'] = two_hundred_days_ema
+
+            # Train Linear Regression model with EMA
+            X_lr, y_lr = prepare_data_for_lr(selected_stock_data)
             model_lr = LinearRegression()
-            X_lr = merged_data[['WPI', '50 Days EMA', '200 Days EMA']]
-            y_lr = merged_data['Close']
             model_lr.fit(X_lr, y_lr)
 
             # Train ARIMA model using auto_arima
@@ -202,7 +204,7 @@ if st.button("Train Models"):
             model_lstm.fit(x_train, y_train, epochs=50, batch_size=32)
 
             # Predict future prices based on Linear Regression
-            future_prices_lr = model_lr.predict([[expected_inflation, fifty_days_ema.iloc[-1], two_hundred_days_ema.iloc[-1]]])
+            future_prices_lr = model_lr.predict([[expected_inflation]])
             st.write(f"Predicted Price Change for Future Inflation (Linear Regression): {future_prices_lr[0]}")
 
             # Predict future prices based on ARIMA
@@ -242,6 +244,16 @@ if st.button("Train Models"):
             # Display the latest actual price
             latest_actual_price = merged_data['Close'].iloc[-1]
             st.write(f"Latest Actual Price for {stock_name}: {latest_actual_price}")
+
+            # Display Beta, Return_on_Investment, Debt_to_Equity_Ratio, Category for selected stocks
+            selected_stock_info = categorized_stocks.loc[categorized_stocks['Symbol'] == stock_name]
+            if not selected_stock_info.empty:
+                st.write(f"Beta for {stock_name}: {selected_stock_info['Beta'].values[0]}")
+                st.write(f"Return on Investment for {stock_name}: {selected_stock_info['Return_on_Investment'].values[0]}")
+                st.write(f"Debt to Equity Ratio for {stock_name}: {selected_stock_info['Debt_to_Equity_Ratio'].values[0]}")
+                st.write(f"Category for {stock_name}: {selected_stock_info['Category'].values[0]}")
+            else:
+                st.warning(f"No information found for {stock_name} in categorized_stocks.")
 
             # Calculate volatility and Sharpe ratio
             daily_returns = merged_data['Close'].pct_change().dropna()
