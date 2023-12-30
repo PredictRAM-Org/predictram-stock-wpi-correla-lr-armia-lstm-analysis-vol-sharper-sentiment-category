@@ -115,7 +115,12 @@ expected_inflation = st.number_input("Enter Expected Upcoming WPI Inflation:", m
 # News API key from newsapi.org
 news_api_key = "5843e8b1715a4c1fb6628befb47ca1e8"
 
+# ... (code for displaying categorized stocks data)
+
 # Train models
+if st.button("Train Models"):
+    st.write(f"Training models with data range: {data_range}, expected
+    # Train models
 if st.button("Train Models"):
     st.write(f"Training models with data range: {data_range}, expected WPI inflation: {expected_inflation}...")
 
@@ -236,10 +241,8 @@ if st.button("Train Models"):
             volatilities.append(annualized_volatility)
             sharpe_ratios.append(sharpe_ratio)
 
-    # Create a DataFrame for categorized stocks data
     categorized_stocks_df = pd.DataFrame(categorized_stocks_list)
 
-    # Display results in descending order of correlation
     st.write("\nResults Sorted by Correlation:")
     sorted_results_df = pd.DataFrame({
         'Stock': stock_names,
@@ -258,6 +261,4 @@ if st.button("Train Models"):
 
     # Display categorized stocks data at the end
     st.write("\nCategorized Stocks Data:")
-    categorized_stocks_df_selected = categorized_stocks_df[selected_columns]
-    categorized_stocks_df_str = categorized_stocks_df_selected.astype(str)
-    st.table(categorized_stocks_df_str)
+    st.table(categorized_stocks_df)
