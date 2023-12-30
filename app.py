@@ -119,16 +119,22 @@ news_api_key = "5843e8b1715a4c1fb6628befb47ca1e8"  # Replace with your actual AP
 if st.button("Train Models"):
     st.write(f"Training models with data range: {data_range}, expected WPI inflation: {expected_inflation}...")
 
-    correlations = []
-    actual_correlations = []  # New feature
-    future_prices_lr_list = []
-    future_prices_arima_list = []
-    latest_actual_prices = []
-    future_price_lstm_list = []
-    stock_names = []
-    volatilities = []
-    sharpe_ratios = []
-    news_sentiment_scores = []  # New feature
+    results_data = {
+        'Stock': [],
+        'Correlation with WPI Change': [],
+        'Actual Correlation with WPI': [],
+        'Predicted Price Change (Linear Regression)': [],
+        'Predicted Price Change (ARIMA)': [],
+        'Latest Actual Price': [],
+        'Predicted Stock Price (LSTM)': [],
+        'Volatility': [],
+        'Beta': [],
+        'Return_on_Investment': [],
+        'Debt_to_Equity_Ratio': [],
+        'Category': [],
+        'Sharpe Ratio': [],
+        'News Sentiment Scores': []
+    }
 
     for index, row in stocks_data.iterrows():
         stock_name = row['Stock']
@@ -137,8 +143,18 @@ if st.button("Train Models"):
         additional_info = categorized_stocks_data[categorized_stocks_data['Symbol'] == stock_name]
 
         if not additional_info.empty:
+            volatility = additional_info['Volatility'].values[0]
+            beta = additional_info['Beta'].values[0]
+            roi = additional_info['Return_on_Investment'].values[0]
+            debt_to_equity_ratio = additional_info['Debt_to_Equity_Ratio'].values[0]
+            category = additional_info['Category'].values[0]
+
             st.write(f"\nAdditional Information for {stock_name}:")
-            st.table(additional_info)
+            st.write(f"Volatility: {volatility}")
+            st.write(f"Beta: {beta}")
+            st.write(f"Return on Investment: {roi}")
+            st.write(f"Debt to Equity Ratio: {debt_to_equity_ratio}")
+            st.write(f"Category: {category}")
 
         # Fetch stock data and filter based on selected date range
         stock_file_path = os.path.join("stock_folder", f"{stock_name}.xlsx")
@@ -250,22 +266,26 @@ if st.button("Train Models"):
             volatilities.append(annualized_volatility)
             sharpe_ratios.append(sharpe_ratio)
 
+            # Append results to the dictionary
+            results_data['Stock'].append(stock_name)
+            results_data['Correlation with WPI Change'].append(correlation_close_WPI)
+            results_data['Actual Correlation with WPI'].append(correlation_actual)
+            results_data['Predicted Price Change (Linear Regression)'].append(future_prices_lr[0])
+            results_data['Predicted Price Change (ARIMA)'].append(future_prices_arima)
+            results_data['Latest Actual Price'].append(latest_actual_price)
+            results_data['Predicted Stock Price (LSTM)'].append(future_price_lstm)
+            results_data['Volatility'].append(annualized_volatility)
+            results_data['Beta'].append(beta)
+            results_data['Return_on_Investment'].append(roi)
+            results_data['Debt_to_Equity_Ratio'].append(debt_to_equity_ratio)
+            results_data['Category'].append(category)
+            results_data['Sharpe Ratio'].append(sharpe_ratio)
+            results_data['News Sentiment Scores'].append(news_sentiment_scores)
+
     # Create a DataFrame for results
-    results_data = {
-        'Stock': stock_names,
-        'Correlation with WPI Change': correlations,
-        'Actual Correlation with WPI': actual_correlations,  # New feature
-        'Predicted Price Change (Linear Regression)': future_prices_lr_list,
-        'Predicted Price Change (ARIMA)': future_prices_arima_list,
-        'Latest Actual Price': latest_actual_prices,
-        'Predicted Stock Price (LSTM)': future_price_lstm_list,
-        'Volatility': volatilities,
-        'Sharpe Ratio': sharpe_ratios,
-        'News Sentiment Scores': news_sentiment_scores  # New feature
-    }
     results_df = pd.DataFrame(results_data)
 
     # Display results in descending order of correlation
     st.write("\nResults Sorted by Correlation:")
-    sorted_results_df = results_df.sort_values(by='Correlation with WPI Change', ascending=False)
+    sorted_results_df = results_df.sort_values(by='Correlation with WPI Change
     st.table(sorted_results_df)
