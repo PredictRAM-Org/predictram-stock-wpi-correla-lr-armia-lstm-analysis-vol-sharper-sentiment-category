@@ -256,12 +256,8 @@ if st.button("Train Models"):
 
     st.table(sorted_results_df)
 
-    # Display categorized stocks data at the end
-    st.write("\nCategorized Stocks Data:")
-    # Define the columns you want to select
-selected_columns = ['Stock', 'Categorized Stocks Data']
-
-# Select the specified columns from the DataFrame
+# Display categorized stocks data at the end
+st.write("\nCategorized Stocks Data:")
 categorized_stocks_df_selected = categorized_stocks_df[selected_columns]
-    categorized_stocks_df_str = categorized_stocks_df_selected.astype(str)
-    st.table(categorized_stocks_df_str)
+categorized_stocks_df_str = categorized_stocks_df_selected.astype(str)
+st.table(categorized_stocks_df_str)
